@@ -105,7 +105,7 @@ class FashionOutfitGenerator(BaseTool):
         return (stuff_chain.run(docs))
 
     def create_social_media_trends(self):
-        prompt_template = """You are given the current social media fashion trends in the below text. Extract the fashion keywords and provide a summary of the fashion trends and give a summary of the color trends, outfit combinations, pattern trends etc:
+        prompt_template = """You are given the current social media fashion trends in the below text. You need to provide a summary of the fashion trends and give a summary of the color trends, outfit combinations, pattern trends etc:
         "{text}"
         CURRENT SOCIAL MEDIA FASHION TRENDS:"""
         prompt = PromptTemplate.from_template(prompt_template)
@@ -118,7 +118,7 @@ class FashionOutfitGenerator(BaseTool):
         stuff_chain = StuffDocumentsChain(
             llm_chain=llm_chain, document_variable_name="text"
         )
-        loader = TextLoader("./vogueCaptions.txt")
+        loader = TextLoader("./imageCaptions.txt")
         docs = loader.load()
         return (stuff_chain.run(docs))
 
@@ -164,8 +164,7 @@ class FashionOutfitGenerator(BaseTool):
 
 def main():
     fashion_outfit_generator = FashionOutfitGenerator()
-    print(fashion_outfit_generator._run("Create an outfit for a 20 year old girl for a  birthday party"))
-    #print(fashion_outfit_generator._run("Give products only with rating > 4*"))
+    print(fashion_outfit_generator._run("Create an outfit for diwali"))
 # print(fashion_outfit_generator._run("recommend something else instead of flip flops."))
 # print(fashion_outfit_generator._run("No stick with the flip flops."))
 

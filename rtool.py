@@ -13,8 +13,9 @@ from langchain.schema import SystemMessage,HumanMessage
 from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.memory import ConversationBufferMemory
-
+import json
 import requests
+
 
 class FashionOutfitGenerator(BaseTool):
     name = "fashion_outfit_generator"
@@ -31,7 +32,6 @@ class FashionOutfitGenerator(BaseTool):
     
     chat_llm_chain: LLMChain = None
     
-    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         memory = ConversationBufferMemory(memory_key="chat_history",
@@ -46,14 +46,15 @@ class FashionOutfitGenerator(BaseTool):
             content=f"""
                 You are a fashion outfit generator. On the basis of the input prompt,
                 If the input prompt is to change some of the items in the current outfit, then:
-                    
                     Recommend changes to the given outfit based on the user ask.
                 else:  
-                    Recommend a complete outfit consisting of clothing,accessories and footwear aligning with user profile, user purchase history and current fashion trends.
-                    Ignore the current outfit if you have to create a new outfit.
+                    Recommend a complete outfit consisting of clothing,accessories and footwear aligning with user profile, 
+                    user purchase history and current fashion trends.
+                
                 The item names may mention the colors and patterns as well.
                 Output format:
-                List the items in a python list format.
+                A python list of items in the outfit
+
                 User profile: '{user_profile}'
                 User purchase History: '{user_purchase_history}'
                 Current fashion trends: '{fashion_trends}
@@ -78,10 +79,10 @@ class FashionOutfitGenerator(BaseTool):
         # text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
         # texts = text_splitter.split_documents(documents)
 
-        # embeddings = OpenAIEmbeddings(openai_api_key = OPENAI_API_KEY)
+        # embeddings = OpenAIEmbeddings(openai_api_key = OPENAI_ARYAN_KEY)
         # docsearch = Chroma.from_documents(texts, embeddings)
 
-        # qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key= OPENAI_API_KEY), chain_type="stuff", retriever=docsearch.as_retriever())
+        # qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key= OPENAI_ARYAN_KEY), chain_type="stuff", retriever=docsearch.as_retriever())
         user_profile_local = "The profile of the user is a 22 year old male from Gujarat"
         # return qa.run("What is the profile of the user?")
         return user_profile_local
@@ -105,7 +106,7 @@ class FashionOutfitGenerator(BaseTool):
         return (stuff_chain.run(docs))
 
     def create_social_media_trends(self):
-        prompt_template = """You are given the current social media fashion trends in the below text. Extract the fashion keywords and provide a summary of the fashion trends and give a summary of the color trends, outfit combinations, pattern trends etc:
+        prompt_template = """You are given the current social media fashion trends in the below text. You need to provide a summary of the fashion trends and give a summary of the color trends, outfit combinations, pattern trends etc:
         "{text}"
         CURRENT SOCIAL MEDIA FASHION TRENDS:"""
         prompt = PromptTemplate.from_template(prompt_template)
@@ -118,20 +119,19 @@ class FashionOutfitGenerator(BaseTool):
         stuff_chain = StuffDocumentsChain(
             llm_chain=llm_chain, document_variable_name="text"
         )
-        loader = TextLoader("./vogueCaptions.txt")
+        loader = TextLoader("./imageCaptions.txt")
         docs = loader.load()
         return (stuff_chain.run(docs))
 
     def _run(self,prompt: str):
-        print(prompt)
         output = self.chat_llm_chain.run(prompt)
-
         # validate output
         if self.validate_output(output) == False:
-            raise Exception(f"Output is not a python list: {output}")
+            raise Exception(f"Output is not in proper format: {output}")
         
-        outfit_list = eval(output)
+        outfit_list =  eval(output)
         outfit: str = ""
+
         for item in outfit_list:
             search_result = self.search_flipkart(item)
             name = search_result[0]["name"]
@@ -164,11 +164,7 @@ class FashionOutfitGenerator(BaseTool):
 
 def main():
     fashion_outfit_generator = FashionOutfitGenerator()
-    print(fashion_outfit_generator._run("Create an outfit for a 20 year old girl for a  birthday party"))
-    #print(fashion_outfit_generator._run("Give products only with rating > 4*"))
-# print(fashion_outfit_generator._run("recommend something else instead of flip flops."))
-# print(fashion_outfit_generator._run("No stick with the flip flops."))
-
+    print(fashion_outfit_generator._run("Create an outfit for a hindu wedding"))
 
 if __name__ == "__main__":
     main()
