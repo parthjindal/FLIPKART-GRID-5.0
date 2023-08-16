@@ -14,23 +14,28 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import LLMChain
 
 
-def get_agent():
-    memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
-    tools = [FashionOutfitGenerator()]
+def get_agent(memory=None):
+    if memory is None:
+        memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
     llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    tools = [FashionOutfitGenerator()]
 
-    system_message = SystemMessage(content="""
-    You are a fashion outfit generator chatbot.
-    Output format: 
-    List the product names and prices for all the products in the outfit as output """)
-    sys_message = """You are a fashion outfit generator chatbot.
-    Output format: 
-    List the product names and prices for all the products in the outfit as output"""
-    prompt = ChatPromptTemplate.from_messages([
-            system_message,
-            MessagesPlaceholder(variable_name="chat_history"), # Where the memory will be stored.
-            HumanMessagePromptTemplate.from_template("{human_input}"), # Where the human input will injectd
-    ])
+    template ="""
+    You are a friendly, conversational clothing shopping assistant.
+    Use the following context to recommend the outfit with product names, product   price, descriptions, and
+    keywords to show the shopper whats available, help find what they want, and answer any questions. 
+    Be descriptive in your answers.
+    Context:
+    \"""
+    {chat_history}
+    \"""
+    Human Input:\"
+    {input}
+    \"""
+    Helpful answer:
+    """
+
+    prompt = PromptTemplate.from_template(template)
     # main_mode = LLMChain(
     #         llm=llm,
     #         prompt=prompt,
@@ -40,8 +45,7 @@ def get_agent():
     agent = initialize_agent(tools,llm,agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, 
                             verbose=VERBOSE,
                             memory=memory,
-                            handle_parsing_errors=True, prompt = prompt, 
-                            agent_kwargs={"system_message": sys_message})
+                            handle_parsing_errors=True, prompt = prompt)
     return agent
 
 def main():

@@ -26,7 +26,7 @@ class FashionOutfitGenerator(BaseTool):
     else:  
         Use it to make changes to the current outfit based on the user ask. 
         In the input, mention the the pieces that need to be changed.
-    Input must specify if the request is to create a new outfit or to make changes to an existing outfit.
+    Input must specify if the request is to create a new outfit or to make changes to an existing outfit along with the user requirements.
     """
     
     chat_llm_chain: LLMChain = None
@@ -38,9 +38,15 @@ class FashionOutfitGenerator(BaseTool):
                                                return_messages=True)
         outfit_model = ChatOpenAI(openai_api_key = OPENAI_API_KEY,temperature = 0,verbose=VERBOSE)
 
-        user_profile = self.create_user_profile()
-        user_purchase_history = self.create_user_purchase_history()
-        fashion_trends = self.create_social_media_trends()
+        is_retrieval_on = kwargs.get("is_retrieval",False)
+        if is_retrieval_on is not True:
+            user_profile = ""
+            user_purchase_history = ""
+            fashion_trends = ""
+        else:
+            user_profile = self.create_user_profile()
+            user_purchase_history = self.create_user_purchase_history()
+            fashion_trends = self.create_social_media_trends()
         #fashion_trends = "The current fashion trends is to use floral print and vibrant colored outfits."
         systemMessage = SystemMessage(
             content=f"""
@@ -52,11 +58,14 @@ class FashionOutfitGenerator(BaseTool):
                     Recommend a complete outfit consisting of clothing,accessories and footwear aligning with user profile, user purchase history and current fashion trends.
                     Ignore the current outfit if you have to create a new outfit.
                 The item names may mention the colors and patterns as well.
-                Output format:
-                List the items in a python list format.
                 User profile: '{user_profile}'
                 User purchase History: '{user_purchase_history}'
                 Current fashion trends: '{fashion_trends}
+                
+                Output format:
+                List the items in a python list format.
+                Example: ["red shirt", "blue jeans", "black shoes"]
+
                 """
             )
         prompt = ChatPromptTemplate.from_messages([
