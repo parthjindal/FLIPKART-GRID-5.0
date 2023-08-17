@@ -12,12 +12,10 @@ from langchain.agents import AgentType
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import LLMChain
+from query_refiner import QueryRefiner
 
 
-def get_agent(memory=None):
-    if memory is None:
-        memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
-    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+def get_agent(llm,memory=None):
     tools = [FashionOutfitGenerator()]
 
     template ="""
@@ -36,12 +34,6 @@ def get_agent(memory=None):
     """
 
     prompt = PromptTemplate.from_template(template)
-    # main_mode = LLMChain(
-    #         llm=llm,
-    #         prompt=prompt,
-    #         verbose=VERBOSE,
-    #         memory=memory,
-    #     )
     agent = initialize_agent(tools,llm,agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, 
                             verbose=VERBOSE,
                             memory=memory,
@@ -49,12 +41,15 @@ def get_agent(memory=None):
     return agent
 
 def main():
-    agent = get_agent()
+    memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
+    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    agent = get_agent(llm,memory)
+    queryRefiner = QueryRefiner(llm,memory)
     #llmchain = LLMChain(llm,condense_question_prompt,verbose=VERBOSE)
     print("Ready to chat!")
     chat_history = []
     while True:
-        inp = input()
+        inp = queryRefiner(input())
         response = agent.run(input = inp)
         print(response)
        # chat_history.append(f"Human: {inp}, AI: {response}")
