@@ -5,13 +5,14 @@ from langchain.chat_models import ChatOpenAI
 from config import *
 
 TEMPLATE = """
-Given the following chat history between a User and Fashion Outfit Recommending AI,
-Rephrase the user input to be a standalone input that does not require the whole chat history or end the conversation if it seems like it's done.
-You may also include a summary of the chat history to provide context to the user input.
+Given the following chat history between a Human and AI,
+Summarize the user input to be a standalone input that does not require the whole chat history or end the conversation if it seems like it's done.
+You must also include a summary of the chat history to provide context to the user input.
 Chat History:
 \"""
 {chat_history}
 \"""
+
 User input:
 \"""
 {input}
@@ -38,17 +39,18 @@ class QueryRefiner():
         return f"QueryRefiner(llm_chain={self.llm_chain}, memory={self.memory})"
     
 def test():
+    print("Testing QueryRefiner")
     memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
-    llm = ChatOpenAI(temperature=0,openai_api_key=OPENAI_API_KEY)
-    prompt = PromptTemplate.from_template("You are an AI Assistant. Human: {input}, Your reply:")
-    llm_chain = LLMChain(llm=llm,memory=memory,prompt=prompt)
-    qr = QueryRefiner(baseLLM=llm,memory=memory)
-    query = qr("Who is sachin tendulkar ?")
-    print(query)
-    resp = llm_chain.run(input=query)
-    print(resp)
-    query = qr("Is he a batsman ?")
-    print(query)
+    llm1 = ChatOpenAI(temperature=0.7,openai_api_key=OPENAI_API_KEY1)
+    llm2 = ChatOpenAI(temperature=0,openai_api_key =OPENAI_API_KEY)
+    prompt = PromptTemplate.from_template("You are an AI Assistant. Chat History: {chat_history} Human: {input}, Your reply:")
+    llm_chain = LLMChain(llm=llm1,memory=memory,prompt=prompt)
+    qr = QueryRefiner(baseLLM=llm2,memory=memory)
+    while True:
+        inp = qr(input("Input: "))
+        print(f"Refined input: {inp}")
+        print(llm_chain.run(input=inp))
+        print("--------------------------")
 
 if __name__=="__main__":
     test()

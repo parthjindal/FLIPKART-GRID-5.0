@@ -1,14 +1,17 @@
 import streamlit as st
 from streamlit_chat import message
+from recommender_tool import SearchCache
 from langchain.chat_models import ChatOpenAI
-from config import OPENAI_API_KEY
+from config import OPENAI_API_KEY, OPENAI_API_KEY1
 from query_refiner import QueryRefiner
-from main2 import get_agent
+from main import get_agent
 from langchain.chains.conversation.memory import ConversationBufferMemory
-st.subheader("Chatbot with Langchain, ChatGPT, Pinecone, and Streamlit")
+import random
+
+st.subheader("Chat APD: Attire Personalization and Discovery")
 
 if 'responses' not in st.session_state:
-    st.session_state['responses'] = ["How can I assist you?"]
+    st.session_state['responses'] = [("How can I assist you?",None)]
 
 if 'requests' not in st.session_state:
     st.session_state['requests'] = []
@@ -16,47 +19,87 @@ if 'requests' not in st.session_state:
 if 'buffer_memory' not in st.session_state:
     st.session_state["buffer_memory"] = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
 
-llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY1)
 memory = st.session_state["buffer_memory"]
 queryRefiner = QueryRefiner(llm,memory)
-agent = get_agent(llm,memory)
+searchCache = SearchCache()
+agent = get_agent(llm,memory,searchCache)
+
+
+if 'current_index' not in st.session_state:
+    st.session_state["current_index"] = {}
+
+if 'current_image' not in st.session_state:
+    st.session_state["current_image"] = None
+
+def get_next_item_getter(images, key):
+    def get_next_item():
+        current_index = st.session_state["current_index"].get(key,0)
+        current_index = min(current_index+1, len(images)-1)
+        st.session_state["current_index"][key] = current_index
+    return get_next_item
+
+def get_previous_item_getter(images, key):
+    def get_previous_item():
+        current_index = st.session_state["current_index"].get(key,0)
+        current_index = max(current_index-1, 0)
+        st.session_state["current_index"][key] = current_index
+    return get_previous_item
+
+
+# st.button("Get Next Item",on_click=get_next_item)
+# st.button("Get Previous Item",on_click=get_previous_item)
 
 def get_response(query):
-    query = queryRefiner(query)
+    # query = queryRefiner(query)
     response = agent.run(input = query)
-    return response
+    search_json = searchCache.getAll()
+    images = []
+    for item in search_json:
+        print(item)
+        link = item["link"]
+        thumbnail = item["thumbnail"]
+        images.append(f'<figure><img width="100%" height="200" src="{thumbnail}"/><figcaption>{link}</figcaption></figure>')
+                      
+    return f'<p style="font-family:robotica">{response}</p>', images
 
 # container for chat history
 response_container = st.container()
 # container for text box
 textcontainer = st.container()
 
-def get_conversation_string():
-    conversation_string = ""
-    for i in range(len(st.session_state['responses'])-1):
-        
-        conversation_string += "Human: "+st.session_state['requests'][i] + "\n"
-        conversation_string += "Bot: "+ st.session_state['responses'][i+1] + "\n"
-    return conversation_string
 
+def funcy():
+    st.session_state["query"] = st.session_state.input
+    st.session_state.input = ""
 
 with textcontainer:
-    query = st.text_input("Query: ", key="input")
+    st.text_input("Query: ", key="input",on_change= funcy)
+    query = st.session_state.get("query", "")
+    st.session_state["query"] = ""
     if query:
         with st.spinner("typing..."):
-            conversation_string = get_conversation_string()
-            # st.code(conversation_string)
             st.subheader("Refined Query:")
             st.write(query)
-            response = get_response(query)
-            response += "\nhttps://www.flipkart.com/nova-nht-1039-usb-trimmer-45-min-runtime-4-length-settings/p/itmfd97844846452?pid=TMRGB9NKKVZTGTK9&lid=LSTTMRGB9NKKVZTGTK99MO9J5&marketplace=FLIPKART&store=zlw&srno=b_1_2&otracker=hp_omu_Best%2Bof%2BElectronics_1_4.dealCard.OMU_W2LWSC2NR71R_3&otracker1=hp_omu_PINNED_neo%2Fmerchandising_Best%2Bof%2BElectronics_NA_dealCard_cc_1_NA_view-all_3&fm=neo%2Fmerchandising&iid=en_9poLyJmV7zEI1xvNKf0jC5dCEiioyraoOc6l5RMnTePBeM2YuweVmWDI2jzFcYMAtyzm4mNqPa0l76DWQVFZyw%3D%3D&ppt=browse&ppn=browse"
+            response, images = get_response(query)
         st.session_state.requests.append(query)
-        st.session_state.responses.append(response) 
+        st.session_state.responses.append((response,images)) 
 
 with response_container:
+    # message(st.session_state['current_image'],key="-1",allow_html=True)
     if st.session_state['responses']:
         for i in range(len(st.session_state['responses'])):
-            message(st.session_state['responses'][i],key=str(i))
+            response, images = st.session_state['responses'][i]
+            message(response,key=str(i),allow_html=True)
+            if images:
+                current_index = st.session_state["current_index"].get(i,0)
+                message(images[current_index],key=str(i)+"_image",allow_html=True)
+                col1, col2 = st.columns([3,3])
+                with col1:
+                    st.button("Previous",on_click=get_previous_item_getter(images,i),key=str(i)+"_previous",use_container_width=True)
+                with col2:
+                    st.button(" Next",on_click=get_next_item_getter(images, i),key=str(i)+"_next",use_container_width=True)
+
             if i < len(st.session_state['requests']):
                 message(st.session_state["requests"][i], is_user=True,key=str(i)+ '_user')
 

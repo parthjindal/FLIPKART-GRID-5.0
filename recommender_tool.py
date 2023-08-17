@@ -15,6 +15,21 @@ from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, Me
 from langchain.memory import ConversationBufferMemory
 import requests
 
+class SearchCache:
+    def __init__(self):
+        self.cache = []
+
+    def getAll(self):
+        return [item for item in self.cache]
+    
+    def add(self, item):
+        self.cache.append(item)
+
+    def clear(self):
+        self.cache.clear()
+
+    
+
 class FashionOutfitGenerator(BaseTool):
     name = "fashion_outfit_generator"
     description = """
@@ -29,10 +44,11 @@ class FashionOutfitGenerator(BaseTool):
     """
     
     chat_llm_chain: LLMChain = None
+    searchCache: SearchCache = None
     
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, searchCache: SearchCache = None, *args, **kwargs):
+        super().__init__()
+
         memory = ConversationBufferMemory(memory_key="chat_history",
                                                return_messages=True)
         outfit_model = ChatOpenAI(openai_api_key = OPENAI_API_KEY,temperature = 0,verbose=VERBOSE)
@@ -79,6 +95,7 @@ class FashionOutfitGenerator(BaseTool):
             verbose=VERBOSE,
             memory=memory,
         )
+        self.searchCache = searchCache
 
     def create_user_profile(self):
         # loader = TextLoader("./user_profile.txt")
@@ -140,24 +157,22 @@ class FashionOutfitGenerator(BaseTool):
         
         outfit_list = eval(output)
         outfit: str = ""
+       
+        self.searchCache.clear()
         for item in outfit_list:
             search_result = self.search_flipkart(item)
             name = search_result[0]["name"]
             price = search_result[0]["current_price"]
             outfit += f"{item}: {name}, Rs. {price} \n"
+            self.searchCache.add(search_result[0])
+        
         return outfit
     
     def search_flipkart(self, search_term):
         URL = f"https://9d5f-13-233-172-64.ngrok-free.app/search/{search_term}"
         response = requests.get(URL).json()
         response = response["result"]
-        filtered_response = []
-        for resp in response:
-            filtered_response.append({
-                "name": resp["name"],
-                "current_price": resp["current_price"],
-            })
-        return filtered_response[:1]
+        return response[:1]
 
     def validate_output(self, output: str):
         # try to check if output is a python list
