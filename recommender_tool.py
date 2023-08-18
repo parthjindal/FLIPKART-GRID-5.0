@@ -43,7 +43,7 @@ class FashionOutfitGenerator(BaseTool):
     Input must specify if the request is to create a new outfit or to make changes to an existing outfit along with the user requirements.
     """
     
-    chat_llm_chain: LLMChain = None
+    chat_llm_chain: LLMChain = None 
     searchCache: SearchCache = None
     
     def __init__(self, searchCache: SearchCache = None, *args, **kwargs):
@@ -53,7 +53,7 @@ class FashionOutfitGenerator(BaseTool):
                                                return_messages=True)
         outfit_model = ChatOpenAI(openai_api_key = OPENAI_API_KEY,temperature = 0,verbose=VERBOSE)
 
-        is_retrieval_on = kwargs.get("is_retrieval",False)
+        is_retrieval_on = kwargs.get("is_retrieval",True)
         if is_retrieval_on is not True:
             user_profile = ""
             user_purchase_history = ""
@@ -169,7 +169,7 @@ class FashionOutfitGenerator(BaseTool):
         return outfit
     
     def search_flipkart(self, search_term):
-        URL = f"https://9d5f-13-233-172-64.ngrok-free.app/search/{search_term}"
+        URL = f"https://flipkart-scraper-api.dvishal485.workers.dev/search/{search_term}"
         response = requests.get(URL).json()
         response = response["result"]
         return response[:1]

@@ -29,7 +29,7 @@ class FashionOutfitGenerator(BaseTool):
     Input must specify if the request is to create a new outfit or to make changes to an existing outfit.
     """
     
-    chat_llm_chain: LLMChain = None
+    chat_llm_chain: LLMChain = None # type: ignore
     
     
     def __init__(self, *args, **kwargs):
