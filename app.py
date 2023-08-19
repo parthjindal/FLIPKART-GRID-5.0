@@ -2,13 +2,14 @@ import streamlit as st
 from streamlit_chat import message
 from recommender_tool import SearchCache
 from langchain.chat_models import ChatOpenAI
-from config import OPENAI_API_KEY, OPENAI_API_KEY1
+from config import *
 from query_refiner import QueryRefiner
 from main import get_agent
 from langchain.chains.conversation.memory import ConversationBufferMemory
 import random
 
-st.subheader("Chat APD: Attire Personalization and Discovery")
+st.subheader("Chat APD: Attire Predicting Dost Presented by Aryan, Parth and Divyangna")
+
 
 if 'responses' not in st.session_state:
     st.session_state['responses'] = [("How can I assist you?",None)]
@@ -19,18 +20,19 @@ if 'requests' not in st.session_state:
 if 'buffer_memory' not in st.session_state:
     st.session_state["buffer_memory"] = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
 
-llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY1)
-memory = st.session_state["buffer_memory"]
-queryRefiner = QueryRefiner(llm,memory)
-searchCache = SearchCache()
-agent = get_agent(llm,memory,searchCache)
-
-
 if 'current_index' not in st.session_state:
     st.session_state["current_index"] = {}
 
 if 'current_image' not in st.session_state:
     st.session_state["current_image"] = None
+
+if 'agent' not in st.session_state:
+    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY3)
+    memory = st.session_state["buffer_memory"]
+    queryRefiner = QueryRefiner(llm,memory)
+    searchCache = SearchCache()
+    st.session_state["searchCache"] = searchCache
+    st.session_state['agent'] = get_agent(llm,memory,searchCache)
 
 def get_next_item_getter(images, key):
     def get_next_item():
@@ -50,8 +52,11 @@ def get_previous_item_getter(images, key):
 # st.button("Get Next Item",on_click=get_next_item)
 # st.button("Get Previous Item",on_click=get_previous_item)
 
+
 def get_response(query):
     # query = queryRefiner(query)
+    agent = st.session_state['agent']
+    searchCache = st.session_state['searchCache']
     response = agent.run(input = query)
     search_json = searchCache.getAll()
     images = []
@@ -61,7 +66,7 @@ def get_response(query):
         thumbnail = item["thumbnail"]
         images.append(f'<figure><img width="100%" height="200" src="{thumbnail}"/><figcaption>{link}</figcaption></figure>')
                       
-    return f'<p style="font-family:robotica">{response}</p>', images
+    return f'<p style="font-family:robotica back;">{response}</p>', images
 
 # container for chat history
 response_container = st.container()

@@ -14,6 +14,8 @@ from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.memory import ConversationBufferMemory
 import requests
+import logging
+from search import SearchEngine
 
 class SearchCache:
     def __init__(self):
@@ -28,8 +30,8 @@ class SearchCache:
     def clear(self):
         self.cache.clear()
 
+searchEngine = SearchEngine()
     
-
 class FashionOutfitGenerator(BaseTool):
     name = "fashion_outfit_generator"
     description = """
@@ -43,31 +45,31 @@ class FashionOutfitGenerator(BaseTool):
     Input must specify if the request is to create a new outfit or to make changes to an existing outfit along with the user requirements.
     """
     
-    chat_llm_chain: LLMChain = None 
+    chat_llm_chain: LLMChain = None
     searchCache: SearchCache = None
-    
+
     def __init__(self, searchCache: SearchCache = None, *args, **kwargs):
         super().__init__()
 
         memory = ConversationBufferMemory(memory_key="chat_history",
                                                return_messages=True)
-        outfit_model = ChatOpenAI(openai_api_key = OPENAI_API_KEY,temperature = 0,verbose=VERBOSE)
+        outfit_model = ChatOpenAI(openai_api_key = OPENAI_API_KEY3,temperature = 0,verbose=True)
 
-        is_retrieval_on = kwargs.get("is_retrieval",True)
-        if is_retrieval_on is not True:
-            user_profile = ""
-            user_purchase_history = ""
-            fashion_trends = ""
-        else:
-            user_profile = self.create_user_profile()
-            user_purchase_history = self.create_user_purchase_history()
-            fashion_trends = self.create_social_media_trends()
+        user_profile = self.create_user_profile()
+        
+        print("Summarizing user purchase history...")
+        user_purchase_history = self.create_user_purchase_history()
+        print("Summarized user purchase history: ", user_purchase_history)
+        
+        print("Summarizing current fashion trends...")
+        fashion_trends = self.create_social_media_trends()
+        print("Summarized current fashion trends: ", fashion_trends)
+
         #fashion_trends = "The current fashion trends is to use floral print and vibrant colored outfits."
         systemMessage = SystemMessage(
             content=f"""
                 You are a fashion outfit generator. On the basis of the input prompt,
                 If the input prompt is to change some of the items in the current outfit, then:
-                    
                     Recommend changes to the given outfit based on the user ask.
                 else:  
                     Recommend a complete outfit consisting of clothing,accessories and footwear aligning with user profile, user purchase history and current fashion trends.
@@ -92,7 +94,7 @@ class FashionOutfitGenerator(BaseTool):
         self.chat_llm_chain = LLMChain(
             llm=outfit_model,
             prompt=prompt,
-            verbose=VERBOSE,
+            verbose=True,
             memory=memory,
         )
         self.searchCache = searchCache
@@ -118,7 +120,7 @@ class FashionOutfitGenerator(BaseTool):
         prompt = PromptTemplate.from_template(prompt_template)
 
         # Define LLM chain
-        llm = OpenAI(openai_api_key=OPENAI_API_KEY,temperature=0, model_name="gpt-3.5-turbo-16k")
+        llm = OpenAI(openai_api_key=OPENAI_API_KEY1,temperature=0, model_name="gpt-3.5-turbo-16k")
         llm_chain = LLMChain(llm=llm, prompt=prompt)
 
         # Define StuffDocumentsChain
@@ -130,13 +132,13 @@ class FashionOutfitGenerator(BaseTool):
         return (stuff_chain.run(docs))
 
     def create_social_media_trends(self):
-        prompt_template = """You are given the current social media fashion trends in the below text. Extract the fashion keywords and provide a summary of the fashion trends and give a summary of the color trends, outfit combinations, pattern trends etc:
+        prompt_template = """You are given the current social media fashion trends in the below text. Extract the fashion keywords and provide a summary of the fashion trends and give a summary of the color trends, outfit combinations, pattern trends etc in max 1-2 lines:
         "{text}"
         CURRENT SOCIAL MEDIA FASHION TRENDS:"""
         prompt = PromptTemplate.from_template(prompt_template)
 
         # Define LLM chain
-        llm = OpenAI(openai_api_key=OPENAI_API_KEY,temperature=0, model_name="gpt-3.5-turbo-16k")
+        llm = OpenAI(openai_api_key=OPENAI_API_KEY1,temperature=0, model_name="gpt-3.5-turbo-16k")
         llm_chain = LLMChain(llm=llm, prompt=prompt)
 
         # Define StuffDocumentsChain
@@ -160,19 +162,13 @@ class FashionOutfitGenerator(BaseTool):
        
         self.searchCache.clear()
         for item in outfit_list:
-            search_result = self.search_flipkart(item)
+            search_result = searchEngine.search(item)
             name = search_result[0]["name"]
             price = search_result[0]["current_price"]
             outfit += f"{item}: {name}, Rs. {price} \n"
             self.searchCache.add(search_result[0])
         
         return outfit
-    
-    def search_flipkart(self, search_term):
-        URL = f"https://flipkart-scraper-api.dvishal485.workers.dev/search/{search_term}"
-        response = requests.get(URL).json()
-        response = response["result"]
-        return response[:1]
 
     def validate_output(self, output: str):
         # try to check if output is a python list
@@ -186,12 +182,16 @@ class FashionOutfitGenerator(BaseTool):
         raise NotImplementedError("This tool does not support async")
 
 def main():
-    fashion_outfit_generator = FashionOutfitGenerator()
-    print(fashion_outfit_generator._run("Create an outfit for a 20 year old girl for a  birthday party"))
-    #print(fashion_outfit_generator._run("Give products only with rating > 4*"))
+    fashion_outfit_generator = FashionOutfitGenerator(SearchCache(),is_retrieval=True)
+    print(fashion_outfit_generator._run("Create an outfit for a 20 year old girl for a diwali`"))
 # print(fashion_outfit_generator._run("recommend something else instead of flip flops."))
 # print(fashion_outfit_generator._run("No stick with the flip flops."))
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger()
+    # currentTime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    logging.basicConfig(level=logging.DEBUG, 
+                        format="[%(asctime)s:%(msecs)03d %(levelname)s]: %(message)s",
+                        datefmt="%Y-%m-%d %H:%M:%S",filename=f"./logs/logfile.log", filemode="w")
     main()

@@ -13,10 +13,13 @@ from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, Me
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import LLMChain
 from query_refiner import QueryRefiner
+import os
+
+os.environ["openai_api_key"] = OPENAI_API_KEY3
 
 
-def get_agent(llm,memory=None, searchCache=None):
-    tools = [FashionOutfitGenerator(searchCache)]
+def get_agent(llm,memory, searchCache:SearchCache):
+    tools = [FashionOutfitGenerator(searchCache=searchCache)]
 
     template ="""
     You are a friendly, conversational clothing shopping assistant.
@@ -42,10 +45,10 @@ def get_agent(llm,memory=None, searchCache=None):
 
 def main():
     memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
-    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
-    agent = get_agent(llm,memory)
+    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY3)
+    agent = get_agent(llm,memory,SearchCache())
     queryRefiner = QueryRefiner(llm,memory)
-    #llmchain = LLMChain(llm,condense_question_prompt,verbose=VERBOSE)
+    
     print("Ready to chat!")
     chat_history = []
     while True:
