@@ -12,8 +12,6 @@ import logger
 class OrderBy(Enum):
     SIMILARITY = "similarity"
     CURRENT_PRICE = "current_price"
-    ORIGINAL_PRICE = "original_price"
-    DISCOUNTED = "discounted"
 
 class Order(Enum):
     ASC = "asc"
@@ -84,7 +82,7 @@ class SearchEngine():
     """
     def __init__(self,
                  embeddings: OpenAIEmbeddings,
-                 vectorstore: Redis,
+                 vectorstore: VectorStore,
                  max_documents: int = 10,
                  similarity_thresh: float = 0.45) -> None:
         """

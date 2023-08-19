@@ -161,7 +161,7 @@ class FashionOutfitGenerator(BaseTool):
        
         self.searchCache.clear()
         for item in outfit_list:
-            search_result = searchEngine.search(item)
+            search_result = self.searchEngine.search(item)
             name = search_result[0]["name"]
             price = search_result[0]["current_price"]
             outfit += f"{item}: {name}, Rs. {price} \n"
