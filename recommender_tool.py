@@ -30,8 +30,6 @@ class SearchCache:
     def clear(self):
         self.cache.clear()
 
-searchEngine = SearchEngine()
-    
 class FashionOutfitGenerator(BaseTool):
     name = "fashion_outfit_generator"
     description = """
@@ -47,6 +45,7 @@ class FashionOutfitGenerator(BaseTool):
     
     chat_llm_chain: LLMChain = None
     searchCache: SearchCache = None
+    searchEngine: SearchEngine = None
 
     def __init__(self, searchCache: SearchCache = None, *args, **kwargs):
         super().__init__()
@@ -183,7 +182,7 @@ class FashionOutfitGenerator(BaseTool):
 
 def main():
     fashion_outfit_generator = FashionOutfitGenerator(SearchCache(),is_retrieval=True)
-    print(fashion_outfit_generator._run("Create an outfit for a 20 year old girl for a diwali`"))
+    print(fashion_outfit_generator._run("Create an outfit for a 23 year old male for a diwali`"))
 # print(fashion_outfit_generator._run("recommend something else instead of flip flops."))
 # print(fashion_outfit_generator._run("No stick with the flip flops."))
 

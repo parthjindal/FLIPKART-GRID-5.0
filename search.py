@@ -1,166 +1,198 @@
 from config import *
+from langchain.vectorstores import VectorStore
 from langchain.vectorstores.redis import Redis
 from langchain.embeddings.openai import OpenAIEmbeddings
-import requests
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import uuid
-from typing import List
+from typing import List,Dict, Tuple
 import logging
+from products import Products, session
+from enum import Enum
+from abc import ABC, abstractmethod
+import logger
 
-# Define the SQLAlchemy Base class
-Base = declarative_base() 
-class Products(Base):
-    __tablename__ = 'products'
-    id = Column(String(36), primary_key=True)
-    name = Column(String, nullable=False)
-    link = Column(String, nullable=False)
-    current_price = Column(Integer, nullable=False)
-    original_price = Column(Integer, nullable=False)
-    discounted = Column(Integer)
-    thumbnail = Column(String)
-    query_url = Column(String)
+class OrderBy(Enum):
+    SIMILARITY = "similarity"
+    CURRENT_PRICE = "current_price"
+    ORIGINAL_PRICE = "original_price"
+    DISCOUNTED = "discounted"
 
-def SQLSessionGetter():
-    engine = create_engine(f'sqlite:///{SQL_DB_PATH}')
-    Base.metadata.create_all(engine) # type: ignore
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
+class Order(Enum):
+    ASC = "asc"
+    DESC = "desc"
 
-def SearchOnFlipKart(search_term):
-    URL = f"https://9d5f-13-233-172-64.ngrok-free.app/search/{search_term}"
-    response = requests.get(URL).json()
-    responses = response["result"]
-    return responses
+class FilterType(Enum):
+    RATING = "rating"
+    POPULARITY = "popularity"
+    PRICE = "price"
 
+class Filter(ABC):
+    def __init__(self, filter_type: FilterType, *args, **kwargs):
+        self.filter_type = filter_type
+
+    @abstractmethod
+    def __repr__(self):
+        pass
+
+class RatingFilter(Filter):
+    def __init__(self, rating: float
+                 , *args, **kwargs):
+        super().__init__(filter_type=FilterType.RATING, *args, **kwargs)
+        self.rating = rating
+
+    def __repr__(self):
+        return f"rating >= {self.rating}"
+
+class PopularityFilter(Filter):
+    def __init__(self, popularity: float
+                 , *args, **kwargs):
+        super().__init__(filter_type=FilterType.POPULARITY, *args, **kwargs)
+        self.popularity = popularity
+
+    def __repr__(self):
+        return f"popularity >= {self.popularity}"
+    
+
+class PriceFilter(Filter):
+    def __init__(self, price_range: Tuple
+                 , *args, **kwargs):
+        """
+        Arguments:
+            price_range: Tuple of (min_price, max_price)
+            if min_price == 0, then min_price is not considered
+            if max_price == 0, then max_price is not considered
+        """
+        super().__init__(filter_type=FilterType.PRICE, *args, **kwargs)
+        self.price_range = price_range
+
+    def __repr__(self):
+        if self.price_range[0] == self.price_range[1]:
+            return f"current_price == {self.price_range[0]}"
+        if self.price_range[0] == 0:
+            return f"current_price <= {self.price_range[1]}"
+        if self.price_range[1] == 0:
+            return f"current_price >= {self.price_range[0]}"
+        return f"current_price >= {self.price_range[0]} AND current_price <= {self.price_range[1]}"
 
 class SearchEngine():
-    def __init__(self, is_init: bool = False, k: int = 10, threshold: float = 0.45):
-        self.embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY1)
-        self.vectorstore = None
-        if is_init == False:
-            self.vectorstore = Redis.from_existing_index(index_name=INDEX_NAME,
-                                                         redis_url=REDIS_URL,
-                                                         embedding=self.embeddings)
-        self.session = SQLSessionGetter()
-        self.k = k
-        self.threshold = threshold
+    """
+    Search Engine is an interface that contains methods to search products
+    on Flipkart using a vectorstore and sql database containing product information.
+    To search a term, the term is first embedded using the OpenAIEmbeddings class
+    and then the vectorstore is searched for similar vectors. The results are then
+    filtered using the sql database to get the products that are most similar to the
+    search term. This combines the power of vector search with the power of sql databases 
+    allowing for meaningful search results along with ability to sort and filter the results.
+    """
+    def __init__(self,
+                 embeddings: OpenAIEmbeddings,
+                 vectorstore: Redis,
+                 max_documents: int = 10,
+                 similarity_thresh: float = 0.45) -> None:
+        """
+        Arguments:
+            embeddings: OpenAIEmbeddings object
+            vectorstore: VectorStore object
+            max_documents: Maximum number of documents to search
+            similarity_thresh: Threshold for similarity
+        """
+        self.embeddings = embeddings
+        self.vectorstore = vectorstore
+        self.session = session
+        self.max_documents = max_documents
+        self.similarity_thresh = similarity_thresh
 
-    def addToRedis(self, texts, metadatas):
-        if self.vectorstore is not None:
-            embeddings = self.embeddings.embed_documents(texts)
-            self.vectorstore.add_texts(texts=texts, metadatas=metadatas, embeddings=embeddings)
-        else:
-            self.vectorstore = Redis.from_texts(
-                texts=texts,
-                metadatas=metadatas,
-                index_name=INDEX_NAME,
-                embedding=self.embeddings,
-                redis_url=REDIS_URL,
-            )
-        return self.vectorstore
-
-    def add(self, productJSON: dict):
-        thumbnail = "" 
-        if len(productJSON["thumbnail"]):
-            thumbnail = productJSON["thumbnail"][0]
-
-        product = Products(
-            id = str(uuid.uuid4()),
-            name=productJSON["name"],
-            link=productJSON["link"],
-            current_price=productJSON["current_price"],
-            original_price=productJSON["original_price"],
-            discounted=productJSON["discounted"],
-            thumbnail=thumbnail,
-            query_url=productJSON["query_url"]
-        ) # type: ignore
-        self.session.add(product)
-        self.session.commit()
-        
-        return product.id
-
-    def addAll(self, productsJSON: List[dict]):
-        texts = []
-        metadatas = []
-        for productJSON in productsJSON:
-            uniqueID = self.add(productJSON)
-            texts.append(productJSON["name"])
-            metadatas.append({"uuid": uniqueID})
-        self.vectorstore = self.addToRedis(texts=texts, metadatas=metadatas)
-
-    def _construct_search_query(self, uuids, order_by: str = "current_price", order: str = "asc", limit: int = 10):
+    def _construct_search_query(
+        self, 
+        uuids: List[str],
+        order_by: str,
+        order: str,
+        limit: int,
+        filters: List[Filter],
+    ) -> str:
         uuids_str = ""
         for uuid in uuids:
             uuids_str += f"'{uuid}',"
         uuids_str = uuids_str[:-1]
         uuids_str = "(" + uuids_str + ")"
+        if order_by == "similarity":
+            suffix = f"LIMIT {limit}"
+        else:
+            suffix = f"ORDER BY {order_by} {order} LIMIT {limit}"
         query = f"""
-        SELECT * FROM products WHERE id IN {uuids_str} ORDER BY {order_by} {order} LIMIT {limit};
-        """
-        return query
-
-    def search(self, query: str, order_by: str = "current_price", order: str = "asc", limit: int = 10):
-        logging.debug(f"Searching for {query}")
-        results = self.vectorstore.search(query,search_type="similarity",k=self.k,threshold=self.threshold)
-        uuids = [result.metadata["uuid"] for result in results]
-
-        query = self._construct_search_query(uuids=uuids, order_by=order_by, order=order, limit=limit)
-        resp = self.session.execute(query)
-        products: List[Products] = resp.fetchall()
-        productsJSON = []
+SELECT * FROM products WHERE id IN {uuids_str}"""
+        for filter in filters:
+            query += f"\n   AND {filter}"
         
-        logging.debug(f"Found {len(products)} products")
+        query += f" {suffix}"
+        query += ";"
+        return query
+    
+    def search(
+        self,
+        search_term: str,
+        order_by: OrderBy = OrderBy.SIMILARITY,
+        order: Order = Order.DESC,
+        limit: int = 10,
+        filters: List[Filter] = []
+    ) -> List[Dict]:
+        """
+        Arguments:
+            search_term: Search term
+            order_by: Order by which to sort the results
+            order: Order of the results
+            limit: Maximum number of results to return
+            filters: List of filters to apply to the results
+
+        """
+        logging.debug("Searching in vectorstore")
+        results = self.vectorstore.search(
+            search_term,
+            search_type="similarity",
+            k=self.max_documents,
+            threshold=self.similarity_thresh,
+        )
+        logging.debug("Search in vectorstore complete")
+        uuids = [result.metadata["uuid"] for result in results]
+        
+        query = self._construct_search_query(
+            uuids=uuids,
+            order_by=order_by.value,
+            order=order.value,
+            limit=limit,
+            filters=filters,
+        )
+        logging.debug(f"Search Query: {query}")
+        try:
+            resp = self.session.execute(query)
+            products: List[Products] = resp.fetchall()
+        except Exception as e:
+            logging.error(f"Error while executing query {query}: {e}")
+            raise e
+ 
+        productsDict = []
         for product in products:
-            productsJSON.append({
+            productsDict.append({
                 "name": product.name,
                 "link": product.link,
                 "current_price": product.current_price,
                 "original_price": product.original_price,
                 "discounted": product.discounted,
                 "thumbnail": product.thumbnail,
-                "query_url": product.query_url
             })
-        return productsJSON
+        return productsDict
 
 
-def search_flipkart( search_term):
-    URL = f"https://9d5f-13-233-172-64.ngrok-free.app/search/{search_term}"
-    response = requests.get(URL).json()
-    responses = response["result"]
-    return responses
+def test():
+    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY1)
+    vectorstore = Redis.from_existing_index(index_name=INDEX_NAME,
+                                             redis_url=REDIS_URL,
+                                             embedding=embeddings)
+    se = SearchEngine(embeddings=embeddings,
+                        vectorstore=vectorstore,
+                        max_documents=100, similarity_thresh=0.6)
+    print(se.search("jumpsuit",
+                    order_by=OrderBy.SIMILARITY, 
+                    filters=[RatingFilter(4), PopularityFilter(0.9), PriceFilter((200, 1000))]))
 
-se = SearchEngine(is_init=False,k = 10, threshold=0.4)
-search_terms = [
-    # 'lehenga',
-    # 'saree',
-    # 't-shirt',
-    # 'shirt',
-    # 'jeans',
-    # 'shorts',
-    # 'crop-tops',
-    # 'jackets',
-    # 'sweatshirts',
-    # 'plazzo',
-    # 'salwar',
-    # 'churidar',
-    # 'dhoti',
-    # 'jumpsuit',
-    # 'blazer',
-    # 'coat',
-    # 'sweater',
-    # 'shrug',
-    'Silver sandals',
-    'Embroidered clutch',
-    'Gold jhumka earrings',
-    'Gold bangles',
-]
 
-# allProducts = []
-# for search_term in search_terms:
-#     products = search_flipkart(search_term)
-#     allProducts.extend(products)
-# se.addAll(allProducts)
-# print(se.search(input("Enter search term:")))
+if __name__ == "__main__":
+    test()
