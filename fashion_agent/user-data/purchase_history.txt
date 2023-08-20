@@ -1,0 +1,21 @@
+User Products Purchase History:
+1.
+Name - Polo Collar Pure Cotton Casual Raglan Sleeve Flat Knit T-Shirt
+Size - M
+Company - Globus
+2.
+Name - Men Charcoal Grey Slim Fit Striped Casual Shirt
+Size - 39 cm
+Company - WROGN
+3.
+Name - Men Maroon Solid Sweatshirt
+Size - S
+Company - Allen Solly
+4.
+Name - Men Blue Solid Denim Jacket
+Size - S
+Company - Kook N Keech
+5.
+Name - Men Blue Sweatshirt
+Size - M
+Company - Louis Philippe Sport

@@ -1,3 +1,0 @@
-Age: 22
-Gender: Male
-Regional location: Gujarat

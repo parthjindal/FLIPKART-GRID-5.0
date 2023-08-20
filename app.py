@@ -1,12 +1,21 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import streamlit as st
 from streamlit_chat import message
-from recommender_tool import SearchCache
 from langchain.chat_models import ChatOpenAI
-from config import *
-from query_refiner import QueryRefiner
-from main import get_agent
+from fashion_agent import build_agent
 from langchain.chains.conversation.memory import ConversationBufferMemory
 import random
+import logging
+import datetime
+
+current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+logging.basicConfig(
+    level=logging.DEBUG, 
+    format="[%(asctime)s:%(msecs)03d %(levelname)s]: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",filename=f"fashion_agent/logs/{current_time}.log", filemode="w"
+)
 
 st.subheader("Chat APD: Attire Predicting Dost Presented by Aryan, Parth and Divyangna")
 
@@ -17,8 +26,6 @@ if 'responses' not in st.session_state:
 if 'requests' not in st.session_state:
     st.session_state['requests'] = []
 
-if 'buffer_memory' not in st.session_state:
-    st.session_state["buffer_memory"] = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
 
 if 'current_index' not in st.session_state:
     st.session_state["current_index"] = {}
@@ -27,12 +34,11 @@ if 'current_image' not in st.session_state:
     st.session_state["current_image"] = None
 
 if 'agent' not in st.session_state:
-    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY3)
-    memory = st.session_state["buffer_memory"]
-    queryRefiner = QueryRefiner(llm,memory)
-    searchCache = SearchCache()
-    st.session_state["searchCache"] = searchCache
-    st.session_state['agent'] = get_agent(llm,memory,searchCache)
+    agent = build_agent()
+    st.session_state["agent"] = agent
+    st.session_state['searchCache'] = agent.tools[0].search_cache
+    st.session_state['buffer_memory'] = agent.memory
+
 
 def get_next_item_getter(images, key):
     def get_next_item():
@@ -58,13 +64,13 @@ def get_response(query):
     agent = st.session_state['agent']
     searchCache = st.session_state['searchCache']
     response = agent.run(input = query)
-    search_json = searchCache.getAll()
+    search_json = searchCache.get_all()
     images = []
     for item in search_json:
         print(item)
         link = item["link"]
         thumbnail = item["thumbnail"]
-        images.append(f'<figure><img width="100%" height="200" src="{thumbnail}"/><figcaption>{link}</figcaption></figure>')
+        images.append(f'<figure><img src="{thumbnail}"/><figcaption>{link}</figcaption></figure>')
                       
     return f'<p style="font-family:robotica back;">{response}</p>', images
 
