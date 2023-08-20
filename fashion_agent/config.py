@@ -14,3 +14,4 @@ TRENDS_STORE_PATH = f"{BASE_PATH}/scraper/data/vogue/summary.txt"
 PURCHASE_HISTORY_PATH = f"{BASE_PATH}/user-data/purchase_history.txt"
 MAX_DOCUMENTS = 10
 SIMILARITY_THRESH = 0.6
+LANGCHAIN_EMBEDDING_CACHE_PATH = f"{BASE_PATH}/data/cache/embeddings/"

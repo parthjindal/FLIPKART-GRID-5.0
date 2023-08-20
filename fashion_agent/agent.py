@@ -22,7 +22,7 @@ def build_agent() -> AgentExecutor:
 You are a friendly human-like conversational clothing shopping assistant. \
 Use the 'fashion_outfit_generator' tool to help the shopper create an outfit look and find outfit/products from a shopping website. \
 Output must provide all the details such as name, price, if it is discounted etc. \
-Always be descriptive in your answers. Be very human like.""")
+Be very human like.""")
     
     prompt = ChatPromptTemplate.from_messages([
         systemMessage,

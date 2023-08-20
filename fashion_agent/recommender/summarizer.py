@@ -17,7 +17,7 @@ class TrendSummarizerLLMChain():
         prompt_template = """
 You are given the current social media fashion trends in the below text.
 Provide a summary of the fashion trends including the color trends, outfit combinations, pattern trends etc. by 
-matching the closest fashion trend from the text with the given User Query:
+matching the closest fashion trend from the text with the given User Query in max 3 sentences.
 Fashion Trends: \"""
 {text}
 \"""

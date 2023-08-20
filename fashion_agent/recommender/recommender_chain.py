@@ -21,9 +21,9 @@ class FashionOutfitRecommenderLLMChain():
         system_message = SystemMessage(content=f"""
 You are a fashion outfit recommender. Based on the input prompt, \
 Either create a complete outfit consisting of clothing, accessories and footwear or make changes to an existing outfit or an outfit piece. \
-Also consider the user profile, user purchase history and current fashion trends if required. \
-If Human mentions about price, popularity, rating, then add those attributes to the output JSON.
-
+You may also use the user profile, purchase history and current fashion trends to make the recommendations more personalized. \
+The item names must be detailed and can mention colors, patterns and other search terms.
+                                       
 User profile: '{user_profile}'
 User purchase History: '{user_purchase_history}'
 Current fashion trends: '{fashion_trends}'
@@ -31,13 +31,11 @@ Current fashion trends: '{fashion_trends}'
 Output JSON format:
 {{
     'items': ['item1', 'item2', 'item3'], # A python list containing only the names of the items.
-    'attributes': a string containing the attributes such as price, popularity, rating. [Optional, only if human mentions about it.]
 }}
 
 Example:
 {{
-    'items': ['red shirt', 'blue jeans', 'black shoes'] # A python list containing only the names of the items.
-    'attributes': "price between 1000-2000, popularity greater than 0.5, rating greater than 3"
+    'items': ['men red graphic shirt', 'men blue ripped jeans', 'men black shoes'] 
 }}
 """)
         
@@ -62,8 +60,6 @@ Example:
             response_dict = eval(response)
             if "items" not in response_dict:
                 raise Exception(f"Output JSON does not contain 'items' key: {response}")
-            if "attributes" not in response_dict:
-                response_dict["attributes"] = ""
         except:
             raise Exception(f"Output is not a valid JSON: {response}")
         return response_dict

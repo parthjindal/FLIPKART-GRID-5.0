@@ -16,12 +16,16 @@ logging.basicConfig(
 st.subheader("Chat APD: Attire Predicting Dost")
 
 
+def format_response(response):
+    lines = response.split('\n')  # Split input text into lines
+    formatted_lines = [f'<p style="font-family: Lato; font-size: 18px; color: white;">{line}</p>' for line in lines]  # Wrap each line with paragraph tags
+    return '\n'.join(formatted_lines)  # Join formatted lines with line breaks
+
 if 'responses' not in st.session_state:
-    st.session_state['responses'] = [("How can I assist you?",None)]
+    st.session_state['responses'] = [(format_response("How can I assist you?"),None)]
 
 if 'requests' not in st.session_state:
     st.session_state['requests'] = []
-
 
 if 'current_index' not in st.session_state:
     st.session_state["current_index"] = {}
@@ -66,9 +70,9 @@ def get_response(query):
         print(item)
         link = item["link"]
         thumbnail = item["thumbnail"]
-        images.append(f'<figure><img src="{thumbnail}" style="max-width: 100%; height: auto;"/><a href="{link}"><figcaption>{item["name"]}</figcaption></a></figure>')
-                      
-    return response, images
+        images.append(f'<figure><img src="{thumbnail}" style="max-width: 60%; height: auto;"/><a href="{link}" style="color: white;"><figcaption>{item["name"]}</figcaption></a></figure>')
+    return format_response(response), images
+    # return f'<p style="font-family: Poppins, sans-serif; font-size: 16px; color: #333;">{response}</p>', images
 
 # container for chat history
 response_container = st.container()
@@ -106,6 +110,6 @@ with response_container:
                     st.button(" Next",on_click=get_next_item_getter(images, i),key=str(i)+"_next",use_container_width=True)
 
             if i < len(st.session_state['requests']):
-                message(st.session_state["requests"][i], is_user=True,key=str(i)+ '_user')
+                message(format_response(st.session_state["requests"][i]), is_user=True,key=str(i)+ '_user',allow_html=True)
 
 

@@ -23,7 +23,7 @@ SEARCH_ENGINE_ARGS_SCHEMA = {
     "description": "Identify the arguments for the search engine",
     "type": "object",
     "properties": {
-        "order_by": {"title": "order_by", "description": "Order the results by", "type": "string", "enum": ["similarity", "current_price"]},
+        "order_by": {"title": "order_by", "description": "Order the results by", "type": "string", "enum": ["similarity", "current_price", "popularity"]},
         "is_descending": {"title": "is_descending", "description": "Order in descending order or not", "type": "boolean"},
         "rating_filter": {"title": "rating_filter", "description": "Filter by rating", "type": "integer","minimum": 1, "maximum": 5},
         "popularity_filter": {"title": "popularity_filter", "description": "Filter by popularity", "type": "number", "minimum": 0, "maximum": 1},
@@ -57,7 +57,7 @@ class SearchEngineWithLLM():
                 content="You are a world class algorithm for extracting information in structured formats."
             ),
             HumanMessage(content="Use the given format to extract information from the following input:"),
-            HumanMessagePromptTemplate.from_template("Attributes: '{attributes}'"),
+            HumanMessagePromptTemplate.from_template("Input: {input}"),
             HumanMessage(content="Tips: Make sure to answer in the correct format"),
         ]
         prompt = ChatPromptTemplate(messages=prompt_msgs)
@@ -77,9 +77,9 @@ class SearchEngineWithLLM():
             se_kwargs["filters"].append(PriceFilter((kwargs.get("min_price",0),kwargs.get("max_price",0))))
         return se_kwargs
     
-    def search(self, search_terms, attributes) -> List:
+    def search(self, search_terms, input_prompt) -> List:
         search_results = []
-        kwargs = self.llm_chain.run(attributes=attributes)
+        kwargs = self.llm_chain.run(input=input_prompt)
         se_kwargs = self.construct_se_kwargs(kwargs)
 
         for search_term in search_terms:

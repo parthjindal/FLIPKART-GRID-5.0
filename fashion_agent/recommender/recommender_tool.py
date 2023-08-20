@@ -18,8 +18,8 @@ from langchain.memory import ConversationBufferMemory
 from typing import Callable
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores.redis import Redis
-import langchain
-
+from langchain.storage import LocalFileStore
+from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 
 class SearchCache:
     def __init__(self):
@@ -96,24 +96,24 @@ Input must only be a single string 'prompt'!.
             user_profile=user_profile,
             user_purchase_history=purchase_pattern_summary,
             fashion_trends=trend_summary,
+            verbose=VERBOSE,
         )
         response = recommender.run(prompt)
         outfit = response["items"]
-        attributes = response["attributes"]
 
         changed_items = []
-        print(outfit, attributes)
+        print(outfit)
         for item in outfit:
             if self.search_cache1.get(item) == 0:
                 changed_items.append(item)
 
-        search_results = self.search_engine.search(changed_items, attributes)
+        search_results = self.search_engine.search(changed_items, prompt)
         
         self.search_cache2.clear()
         recommendation_results = ""
         for search_term, search_result in zip(changed_items, search_results):
             if search_result == "NAN":
-                
+                print("Found no results for", search_term)
                 continue
             self.search_cache1.add(search_term, search_result)
             name = search_result["name"]
@@ -151,7 +151,7 @@ def build_fashion_outfit_generator_tool():
     user_profile_summarizer = UserProfileSummarizer(
         age="23",
         city="Delhi",
-        gender="Male",
+        gender="Female",
     )
     purchase_pattern_summarizer_llm = ChatOpenAI(
         model="gpt-3.5-turbo-16k", 
@@ -162,13 +162,17 @@ def build_fashion_outfit_generator_tool():
         purchase_pattern_summarizer_llm,
         PURCHASE_HISTORY_PATH,
     )
+    
+    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    fs = LocalFileStore(LANGCHAIN_EMBEDDING_CACHE_PATH)
+    cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
+        embeddings,fs,namespace=embeddings.model)
 
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY1)
     vectorstore = Redis.from_existing_index(index_name=INDEX_NAME,
                                              redis_url=REDIS_URL,
-                                             embedding=embeddings)
+                                             embedding=cached_embeddings)
     search_engine = SearchEngine(
-        embeddings=embeddings,
+        embeddings=cached_embeddings,
         vectorstore=vectorstore,
         session=session,    
         max_documents=MAX_DOCUMENTS,
@@ -186,7 +190,7 @@ def build_fashion_outfit_generator_tool():
     )
 
     recommender_llm = ChatOpenAI(
-        model="gpt-3.5-turbo-16k",
+        model="gpt-3.5-turbo-0613",
         temperature=0,
         openai_api_key=OPENAI_API_KEY1,
     )

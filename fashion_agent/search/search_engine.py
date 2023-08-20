@@ -8,10 +8,14 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from sqlalchemy.orm import Session
 from .. import logger
+from langchain.storage import LocalFileStore, RedisStore
+from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
+
 
 class OrderBy(Enum):
     SIMILARITY = "similarity"
     CURRENT_PRICE = "current_price"
+    POPULARITY = "popularity"
 
 class Order(Enum):
     ASC = "asc"
@@ -149,8 +153,6 @@ SELECT * FROM products WHERE id IN {uuids_str}"""
             k=self.max_documents,
             threshold=self.similarity_thresh,
         )
-        retriever = self.vectorstore.as_retriever()
-        retriever.get_relevant_documents
         logging.debug("Search in vectorstore complete")
         uuids = [result.metadata["uuid"] for result in results]
         
@@ -186,14 +188,18 @@ SELECT * FROM products WHERE id IN {uuids_str}"""
 def test():
     from ..models.products import session
     embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY1)
+    # fs = LocalFileStore(LANGCHAIN_EMBEDDING_CACHE_PATH)
+    store = RedisStore(redis_url="redis://localhost:6380", client_kwargs={'db': 2}, namespace='embedding_caches')
+    cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings,store)
+
     vectorstore = Redis.from_existing_index(index_name=INDEX_NAME,
                                              redis_url=REDIS_URL,
-                                             embedding=embeddings)
-    se = SearchEngine(embeddings=embeddings,
+                                             embedding=cached_embeddings)
+    se = SearchEngine(embeddings=cached_embeddings,
                       vectorstore=vectorstore,
                       session=session,
-                      max_documents=100, similarity_thresh=0.6)
-    print(se.search("jumpsuit",
+                      max_documents=100, similarity_thresh=1.1)
+    print(se.search("good watch",
                     order_by=OrderBy.SIMILARITY, 
                     filters=[RatingFilter(2), PopularityFilter(0.9), PriceFilter((200, 1000))]))
 

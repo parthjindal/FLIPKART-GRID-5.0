@@ -5,35 +5,10 @@ from langchain.vectorstores.redis import Redis
 from ..config import *
 import random
 
-search_terms = [
-    # 'lehenga',
-    # 'saree',
-    # 't-shirt',
-    # 'shirt',
-    # 'jeans',
-    # 'shorts',
-    # 'crop-tops',
-    # 'jackets',
-    # 'sweatshirts',
-    # 'plazzo',
-    # 'salwar',
-    # 'churidar',
-    # 'dhoti',
-    # 'jumpsuit',
-    # 'blazer',
-    # 'coat',
-    # 'sweater',
-    # 'shrug',
-    # 'Silver sandals',
-    # 'Embroidered clutch',
-    # 'Gold jhumka earrings',
-    # 'Gold bangles',
-    # 'brown mojari',
-    # 'Nehru Jacket',
-    'Men Kurta',
-    'Men White Pajama',
-    'Jutis',
-]
+search_terms = []
+
+with open("fashion_agent/models/terms.txt", mode="r") as f:
+    search_terms = f.read().splitlines()
 
 def search_flipkart( search_term):
     URL = f"https://flipkart-scraper-api.dvishal485.workers.dev/search/{search_term}"
@@ -41,17 +16,10 @@ def search_flipkart( search_term):
     responses = response["result"]
     return responses
 
-def main():
-    products = []
-    print("Fetching products")
-    for search_term in search_terms:
-        print(f"Fetching products for {search_term}")
-        products.extend(search_flipkart(search_term))
+def add_to_db(products, vectorstore: Redis, embeddings: OpenAIEmbeddings):
+    print("Adding to SQL database")
     texts = []
     metadatas = []
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-
-    print("Adding to SQL database")
     for product_dict in products:
         product = Products(
             name = product_dict["name"],
@@ -68,13 +36,33 @@ def main():
         metadatas.append({"uuid": product.id})
         
     print("Adding to vectorstore")
-    Redis.from_texts(
-        texts=texts,
-        metadatas=metadatas,
+    embedding_texts = embeddings.embed_documents(texts)
+    vectorstore.add_texts(texts=texts,embeddings=embedding_texts,metadatas=metadatas)
+
+def main():
+    products = []
+    print("Fetching products")
+    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    redis = Redis(
         index_name=INDEX_NAME,
-        embedding=embeddings,
         redis_url=REDIS_URL,
+        embedding_function=embeddings.embed_query,
     )
+    redis._create_index()
+    redis = Redis.from_existing_index(
+        index_name=INDEX_NAME,
+        redis_url=REDIS_URL,
+        embedding=embeddings,
+    )
+    for search_term in search_terms:
+        print(f"Fetching products for {search_term}")
+        products.extend(search_flipkart(search_term))
+        if len(products) >= 500:
+            add_to_db(products, redis, embeddings)
+            products = []
+    
+    if len(products) > 0:
+        add_to_db(products, redis, embeddings)
 
 if __name__ == "__main__":
     main()
