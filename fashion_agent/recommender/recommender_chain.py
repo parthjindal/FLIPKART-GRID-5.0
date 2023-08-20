@@ -4,7 +4,6 @@ from langchain.memory import ConversationBufferMemory
 from langchain.llms.base import BaseLLM
 from langchain.chains.llm import LLMChain
 from typing import Dict
-import json
 from langchain.chat_models import ChatOpenAI
 from ..config import *
 
@@ -32,7 +31,7 @@ Current fashion trends: '{fashion_trends}'
 Output JSON format:
 {{
     'items': ['item1', 'item2', 'item3'], # A python list containing only the names of the items.
-    'attributes': a string containing the attributes such as price, popularity, rating.
+    'attributes': a string containing the attributes such as price, popularity, rating. [Optional, only if human mentions about it.]
 }}
 
 Example:
@@ -61,8 +60,10 @@ Example:
         response = self.llm_chain.run(prompt)
         try:
             response_dict = eval(response)
-            if "items" not in response_dict or "attributes" not in response_dict:
-                raise Exception(f"Output JSON does not contain 'items' or 'attributes' key: {response}")
+            if "items" not in response_dict:
+                raise Exception(f"Output JSON does not contain 'items' key: {response}")
+            if "attributes" not in response_dict:
+                response_dict["attributes"] = ""
         except:
             raise Exception(f"Output is not a valid JSON: {response}")
         return response_dict

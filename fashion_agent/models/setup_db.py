@@ -30,9 +30,9 @@ search_terms = [
     # 'Gold bangles',
     # 'brown mojari',
     # 'Nehru Jacket',
-    'skirts',
-    'pink skirts',
-    'Black suit',
+    'Men Kurta',
+    'Men White Pajama',
+    'Jutis',
 ]
 
 def search_flipkart( search_term):

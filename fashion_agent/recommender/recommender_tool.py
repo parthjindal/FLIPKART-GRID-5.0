@@ -45,6 +45,7 @@ Use this tool to generate a fashion outfit consisting of clothing, accessories a
 or make changes to an existing outfit or an outfit piece. \
 Input: `prompt`(str) A first person query about creating an outfit or making changes to \
 an existing outfit or an outfit piece based on the user request along with any user preferences about price, popularity, rating etc.
+Input must only be a single string 'prompt'!.
 """
     memory: ConversationBufferMemory = None
     llm: BaseLLM = None
@@ -53,7 +54,8 @@ an existing outfit or an outfit piece based on the user request along with any u
     trend_summarizer: LLMChain = None
     purchase_pattern_summarizer: LLMChain = None
     output_validator: LLMChain = None
-    search_cache: SearchCache = None
+    search_cache1: SearchCache = None
+    search_cache2: SearchCache = None
     search_engine: SearchEngineWithLLM = None
 
     def __init__(
@@ -66,7 +68,8 @@ an existing outfit or an outfit piece based on the user request along with any u
         purchase_pattern_summarizer: LLMChain,
         output_validator: LLMChain,
         search_engine: SearchEngineWithLLM,
-        search_cache: SearchCache,
+        search_cache1: SearchCache,
+        search_cache2: SearchCache,
         *args,
         **kwargs,
     ):
@@ -79,7 +82,8 @@ an existing outfit or an outfit piece based on the user request along with any u
         self.purchase_pattern_summarizer = purchase_pattern_summarizer
         self.output_validator = output_validator
         self.search_engine = search_engine
-        self.search_cache = search_cache
+        self.search_cache1 = search_cache1
+        self.search_cache2 = search_cache2
     
     def _run(self, prompt: str):
         """Use the tool."""
@@ -100,23 +104,31 @@ an existing outfit or an outfit piece based on the user request along with any u
         changed_items = []
         print(outfit, attributes)
         for item in outfit:
-            if self.search_cache.get(item) == 0:
+            if self.search_cache1.get(item) == 0:
                 changed_items.append(item)
 
         search_results = self.search_engine.search(changed_items, attributes)
         
-        # update search cache
-        self.search_cache.clear()
-
+        self.search_cache2.clear()
         recommendation_results = ""
         for search_term, search_result in zip(changed_items, search_results):
             if search_result == "NAN":
+                
                 continue
+            self.search_cache1.add(search_term, search_result)
             name = search_result["name"]
             current_price = search_result["current_price"]
             original_price = search_result["original_price"]
             recommendation_results += f"{search_term}: {name}, Rs. {current_price} (Original Price Rs. {original_price})>\n"
         
+        temp_cache = SearchCache()
+        for item in outfit:
+            temp_cache.add(item, self.search_cache1.get(item))
+        self.search_cache1.cache = temp_cache.cache
+        
+        for item in changed_items:
+            self.search_cache2.add(item, self.search_cache1.get(item))
+
         if recommendation_results == "":
             recommendation_results = "No recommendations found"
         
@@ -179,7 +191,8 @@ def build_fashion_outfit_generator_tool():
         openai_api_key=OPENAI_API_KEY1,
     )
     
-    search_cache = SearchCache()
+    search_cache1 = SearchCache()
+    search_cache2 = SearchCache()
     output_validator = OutputValidatorLLMChain(recommender_llm) # currently turned off
     return FashionOutfitGeneratorTool(
         memory=memory,
@@ -190,7 +203,8 @@ def build_fashion_outfit_generator_tool():
         purchase_pattern_summarizer=purchase_pattern_summarizer,
         output_validator=output_validator,
         search_engine=search_engine_with_llm,
-        search_cache=search_cache,
+        search_cache1=search_cache1,
+        search_cache2=search_cache2,
     )
 
 

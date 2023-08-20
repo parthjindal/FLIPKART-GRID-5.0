@@ -3,10 +3,7 @@ warnings.filterwarnings("ignore")
 
 import streamlit as st
 from streamlit_chat import message
-from langchain.chat_models import ChatOpenAI
 from fashion_agent import build_agent
-from langchain.chains.conversation.memory import ConversationBufferMemory
-import random
 import logging
 import datetime
 
@@ -16,8 +13,7 @@ logging.basicConfig(
     format="[%(asctime)s:%(msecs)03d %(levelname)s]: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",filename=f"fashion_agent/logs/{current_time}.log", filemode="w"
 )
-
-st.subheader("Chat APD: Attire Predicting Dost Presented by Aryan, Parth and Divyangna")
+st.subheader("Chat APD: Attire Predicting Dost")
 
 
 if 'responses' not in st.session_state:
@@ -36,7 +32,7 @@ if 'current_image' not in st.session_state:
 if 'agent' not in st.session_state:
     agent = build_agent()
     st.session_state["agent"] = agent
-    st.session_state['searchCache'] = agent.tools[0].search_cache
+    st.session_state['searchCache'] = agent.tools[0].search_cache2
     st.session_state['buffer_memory'] = agent.memory
 
 
@@ -70,9 +66,9 @@ def get_response(query):
         print(item)
         link = item["link"]
         thumbnail = item["thumbnail"]
-        images.append(f'<figure><img src="{thumbnail}"/><figcaption>{link}</figcaption></figure>')
+        images.append(f'<figure><img src="{thumbnail}" style="max-width: 100%; height: auto;"/><a href="{link}"><figcaption>{item["name"]}</figcaption></a></figure>')
                       
-    return f'<p style="font-family:robotica back;">{response}</p>', images
+    return response, images
 
 # container for chat history
 response_container = st.container()
@@ -90,8 +86,6 @@ with textcontainer:
     st.session_state["query"] = ""
     if query:
         with st.spinner("typing..."):
-            st.subheader("Refined Query:")
-            st.write(query)
             response, images = get_response(query)
         st.session_state.requests.append(query)
         st.session_state.responses.append((response,images)) 

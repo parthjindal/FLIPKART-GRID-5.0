@@ -8,6 +8,10 @@ from langchain.agents import AgentType, AgentExecutor
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts.chat import SystemMessage,  HumanMessage, AIMessage
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, PromptTemplate
+import langchain
+from langchain.cache import SQLiteCache
+langchain.llm_cache = SQLiteCache(LANGCHAIN_CACHE_SQLITE_PATH)
+
 
 def build_agent() -> AgentExecutor:
     memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
