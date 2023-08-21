@@ -23,7 +23,7 @@ def create_social_media_trends():
         prompt = PromptTemplate.from_template(prompt_template)
 
         # Define LLM chain
-        llm = OpenAI(openai_api_key=OPENAI_API_KEY1,temperature=0, model_name="gpt-3.5-turbo-16k")
+        llm = OpenAI(OPENAI_API_KEY=OPENAI_API_KEY1,temperature=0, model_name="gpt-3.5-turbo-16k")
         llm_chain = LLMChain(llm=llm, prompt=prompt)
 
         # Define StuffDocumentsChain

@@ -187,11 +187,10 @@ SELECT * FROM products WHERE id IN {uuids_str}"""
 
 def test():
     from ..models.products import session
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY1)
+    embeddings = OpenAIEmbeddings(OPENAI_API_KEY=OPENAI_API_KEY1)
     # fs = LocalFileStore(LANGCHAIN_EMBEDDING_CACHE_PATH)
     store = RedisStore(redis_url="redis://localhost:6380", client_kwargs={'db': 2}, namespace='embedding_caches')
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings,store)
-
     vectorstore = Redis.from_existing_index(index_name=INDEX_NAME,
                                              redis_url=REDIS_URL,
                                              embedding=cached_embeddings)
@@ -199,10 +198,9 @@ def test():
                       vectorstore=vectorstore,
                       session=session,
                       max_documents=100, similarity_thresh=1.1)
-    print(se.search("good watch",
+    print(se.search("good something",
                     order_by=OrderBy.SIMILARITY, 
                     filters=[RatingFilter(2), PopularityFilter(0.9), PriceFilter((200, 1000))]))
-
 
 if __name__ == "__main__":
     test()

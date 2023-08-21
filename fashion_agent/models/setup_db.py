@@ -42,7 +42,7 @@ def add_to_db(products, vectorstore: Redis, embeddings: OpenAIEmbeddings):
 def main():
     products = []
     print("Fetching products")
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    embeddings = OpenAIEmbeddings(OPENAI_API_KEY=OPENAI_API_KEY)
     redis = Redis(
         index_name=INDEX_NAME,
         redis_url=REDIS_URL,

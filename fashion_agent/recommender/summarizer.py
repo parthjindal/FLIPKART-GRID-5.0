@@ -37,7 +37,7 @@ CURRENT SOCIAL MEDIA FASHION TRENDS:"""
 
     @staticmethod
     def test():        
-        llm = ChatOpenAI(model="gpt-3.5-turbo-0613", temperature=0,openai_api_key=OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-3.5-turbo-0613", temperature=0,OPENAI_API_KEY=OPENAI_API_KEY)
         summarizer = TrendSummarizerLLMChain(llm, "./grid/vogueSummary.txt")
         print(summarizer.run("What are the current fashion trends for weddings?"))
 

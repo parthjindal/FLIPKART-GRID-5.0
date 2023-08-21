@@ -87,14 +87,14 @@ Input must only be a single string 'prompt'!.
     
     def _run(self, prompt: str):
         """Use the tool."""
-        user_profile = self.user_profile_summarizer.run()
+        # user_profile = self.user_profile_summarizer.run()
         trend_summary = self.trend_summarizer.run(prompt)
-        purchase_pattern_summary = self.purchase_pattern_summarizer.run()
+        # purchase_pattern_summary = self.purchase_pattern_summarizer.run()
         recommender = self.recommender_getter(
             llm=self.llm,
             memory=self.memory,
-            user_profile=user_profile,
-            user_purchase_history=purchase_pattern_summary,
+            user_profile="",
+            user_purchase_history="",
             fashion_trends=trend_summary,
             verbose=VERBOSE,
         )
@@ -142,7 +142,7 @@ def build_fashion_outfit_generator_tool():
     trend_summarizer_llm = ChatOpenAI(
         model="gpt-3.5-turbo-16k", 
         temperature=0,
-        openai_api_key=OPENAI_API_KEY,
+        OPENAI_API_KEY=OPENAI_API_KEY4,
     )
     trend_summarizer = TrendSummarizerLLMChain(
         llm=trend_summarizer_llm,
@@ -151,19 +151,19 @@ def build_fashion_outfit_generator_tool():
     user_profile_summarizer = UserProfileSummarizer(
         age="23",
         city="Delhi",
-        gender="Female",
+        gender="Male",
     )
     purchase_pattern_summarizer_llm = ChatOpenAI(
         model="gpt-3.5-turbo-16k", 
         temperature=0,
-        openai_api_key=OPENAI_API_KEY,
+        OPENAI_API_KEY=OPENAI_API_KEY4,
     )
     purchase_pattern_summarizer = PurchasePatternSummarizerLLMChain(
         purchase_pattern_summarizer_llm,
         PURCHASE_HISTORY_PATH,
     )
     
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    embeddings = OpenAIEmbeddings(OPENAI_API_KEY=OPENAI_API_KEY1)
     fs = LocalFileStore(LANGCHAIN_EMBEDDING_CACHE_PATH)
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
         embeddings,fs,namespace=embeddings.model)
@@ -182,7 +182,7 @@ def build_fashion_outfit_generator_tool():
     search_llm = ChatOpenAI(
         model="gpt-3.5-turbo-0613",
         temperature=0,
-        openai_api_key=OPENAI_API_KEY1,
+        OPENAI_API_KEY=OPENAI_API_KEY4,
     )
     search_engine_with_llm = SearchEngineWithLLM(
         base_llm=search_llm,
@@ -192,7 +192,7 @@ def build_fashion_outfit_generator_tool():
     recommender_llm = ChatOpenAI(
         model="gpt-3.5-turbo-0613",
         temperature=0,
-        openai_api_key=OPENAI_API_KEY1,
+        OPENAI_API_KEY=OPENAI_API_KEY4,
     )
     
     search_cache1 = SearchCache()

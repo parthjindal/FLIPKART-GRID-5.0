@@ -93,7 +93,7 @@ class SearchEngineWithLLM():
         return search_results
 
 def test():
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY1)
+    embeddings = OpenAIEmbeddings(OPENAI_API_KEY=OPENAI_API_KEY1)
     vectorstore = Redis.from_existing_index(index_name=INDEX_NAME,
                                              redis_url=REDIS_URL,
                                              embedding=embeddings)
@@ -104,7 +104,7 @@ def test():
         max_documents=100,
         similarity_thresh=0.6
     )
-    llm = ChatOpenAI(model="gpt-3.5-turbo-0613", temperature=0,openai_api_key=OPENAI_API_KEY)
+    llm = ChatOpenAI(model="gpt-3.5-turbo-0613", temperature=0,OPENAI_API_KEY=OPENAI_API_KEY)
     seV2 = SearchEngineWithLLM(base_llm=llm, search_engine=se)
     print(seV2.search(["Maroon kurta", "Gold Bangles"], "rating greater than 4 and price less than 400 and ordered by price in descending order"))
 

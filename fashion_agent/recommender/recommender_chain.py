@@ -67,7 +67,7 @@ Example:
     @staticmethod
     def test():
         fashion_trends = "The current fashion trends is to use floral print and vibrant colored outfits."
-        llm = ChatOpenAI(model="gpt-3.5-turbo-16k", temperature=0,openai_api_key=OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-3.5-turbo-16k", temperature=0,OPENAI_API_KEY=OPENAI_API_KEY)
         memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
         recommender = FashionOutfitRecommenderLLMChain(llm,memory,"","",fashion_trends,verbose=VERBOSE)
         print(recommender.run("Generate outfit for a hindu wedding."))

@@ -15,7 +15,7 @@ langchain.llm_cache = SQLiteCache(LANGCHAIN_CACHE_SQLITE_PATH)
 
 def build_agent() -> AgentExecutor:
     memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
-    llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY,verbose=VERBOSE)
+    llm = ChatOpenAI(temperature=0, OPENAI_API_KEY=OPENAI_API_KEY,verbose=VERBOSE)
     tools = [build_fashion_outfit_generator_tool()]
 
     systemMessage = SystemMessage(content="""
